@@ -1,8 +1,20 @@
 {
   "name": "calculator",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "description": "A responsive calculator built with React, Vite, and Tailwind CSS.",
+  "author": "kagwangkaman",
+  "license": "MIT",
+  "keywords": [
+    "react",
+    "vite",
+    "tailwindcss",
+    "calculator"
+  ],
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
