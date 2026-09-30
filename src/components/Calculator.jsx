@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import Display from "./Display.jsx";
 import Button from "./Button.jsx";
 
-const OPS = ["+", "−", "×", "÷"];
+const MAX_DIGITS = 15;
+const PRECISION = 12;
+
+// Operators where "10%" means "10% of the value already on the left",
+// e.g. 200 + 10% === 220. For * and / the plain value is correct.
+const PERCENT_OF_PREVIOUS = ["+", "−"];
 
 function compute(a, b, op) {
   switch (op) {
@@ -15,7 +20,8 @@ function compute(a, b, op) {
 }
 
 function format(n) {
-  return String(parseFloat(n.toPrecision(12)));
+  if (!Number.isFinite(n)) return "Error";
+  return String(parseFloat(n.toPrecision(PRECISION)));
 }
 
 export default function Calculator() {
@@ -44,7 +50,9 @@ export default function Calculator() {
         if (!operator) setExpression("");
         return;
       }
-      setCurrent((c) => (c === "0" ? d : c.length >= 15 ? c : c + d));
+      setCurrent((c) =>
+        c === "0" ? d : c.length >= MAX_DIGITS ? c : c + d
+      );
     },
     [overwrite, error, operator, clearAll]
   );
@@ -108,15 +116,22 @@ export default function Calculator() {
     setCurrent((c) => (c.length > 1 ? c.slice(0, -1) : "0"));
   }, [error, overwrite, clearAll]);
 
-  const toggleSign = () => {
+  const toggleSign = useCallback(() => {
     if (error || current === "0") return;
     setCurrent((c) => (c.startsWith("-") ? c.slice(1) : "-" + c));
-  };
+  }, [error, current]);
 
-  const percent = () => {
+  const percent = useCallback(() => {
     if (error) return;
-    setCurrent((c) => format(parseFloat(c) / 100));
-  };
+    const value = parseFloat(current);
+    if (Number.isNaN(value)) return;
+
+    if (operator && previous !== null && PERCENT_OF_PREVIOUS.includes(operator)) {
+      setCurrent(format(parseFloat(previous) * (value / 100)));
+    } else {
+      setCurrent(format(value / 100));
+    }
+  }, [error, current, operator, previous]);
 
   // Keyboard support
   useEffect(() => {
@@ -128,35 +143,39 @@ export default function Calculator() {
       else if (k === "-") chooseOperator("−");
       else if (k === "*") chooseOperator("×");
       else if (k === "/") { e.preventDefault(); chooseOperator("÷"); }
+      else if (k === "%") { e.preventDefault(); percent(); }
       else if (k === "Enter" || k === "=") { e.preventDefault(); equals(); }
       else if (k === "Backspace") backspace();
       else if (k === "Escape" || k.toLowerCase() === "c") clearAll();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [inputDigit, inputDecimal, chooseOperator, equals, backspace, clearAll]);
+  }, [inputDigit, inputDecimal, chooseOperator, equals, backspace, percent, clearAll]);
 
   return (
-    <section className="bg-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl w-full max-w-sm mx-auto">
+    <section
+      className="bg-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl w-full max-w-sm mx-auto"
+      aria-label="Calculator"
+    >
       <Display expression={expression} value={current} isError={error} />
       <div className="grid grid-cols-4 gap-3">
-        <Button label="AC" type="clear" onClick={clearAll} ariaLabel="All clear" />
-        <Button label="±" type="util" onClick={toggleSign} ariaLabel="Toggle sign" />
-        <Button label="%" type="util" onClick={percent} ariaLabel="Percent" />
-        <Button label="÷" type="operator" onClick={() => chooseOperator("÷")} ariaLabel="Divide" />
+        <Button label="AC" type="clear" onClick={clearAll} ariaLabel="All clear" title="Clear all (Esc)" />
+        <Button label="±" type="util" onClick={toggleSign} ariaLabel="Toggle sign" title="Toggle sign" />
+        <Button label="%" type="util" onClick={percent} ariaLabel="Percent" title="Percent (%)" />
+        <Button label="÷" type="operator" onClick={() => chooseOperator("÷")} ariaLabel="Divide" title="Divide (/)" />
 
         {["7", "8", "9"].map((n) => <Button key={n} label={n} onClick={() => inputDigit(n)} />)}
-        <Button label="×" type="operator" onClick={() => chooseOperator("×")} ariaLabel="Multiply" />
+        <Button label="×" type="operator" onClick={() => chooseOperator("×")} ariaLabel="Multiply" title="Multiply (*)" />
 
         {["4", "5", "6"].map((n) => <Button key={n} label={n} onClick={() => inputDigit(n)} />)}
-        <Button label="−" type="operator" onClick={() => chooseOperator("−")} ariaLabel="Subtract" />
+        <Button label="−" type="operator" onClick={() => chooseOperator("−")} ariaLabel="Subtract" title="Subtract (-)" />
 
         {["1", "2", "3"].map((n) => <Button key={n} label={n} onClick={() => inputDigit(n)} />)}
-        <Button label="+" type="operator" onClick={() => chooseOperator("+")} ariaLabel="Add" />
+        <Button label="+" type="operator" onClick={() => chooseOperator("+")} ariaLabel="Add" title="Add (+)" />
 
         <Button label="0" span="col-span-2" onClick={() => inputDigit("0")} />
-        <Button label="." onClick={inputDecimal} ariaLabel="Decimal point" />
-        <Button label="=" type="equals" onClick={equals} ariaLabel="Equals" />
+        <Button label="." onClick={inputDecimal} ariaLabel="Decimal point" title="Decimal point (.)" />
+        <Button label="=" type="equals" onClick={equals} ariaLabel="Equals" title="Equals (Enter)" />
       </div>
     </section>
   );
