@@ -22,9 +22,6 @@ export default function App() {
             Glass Calculator
           </span>
         </h1>
-        <p className="mt-0.5 text-xs sm:text-base text-slate-300/80">
-          Plain calculator by default — open ƒx Scientific for premium unlocks &amp; cat memes.
-        </p>
       </header>
 
       <main
@@ -35,7 +32,6 @@ export default function App() {
       </main>
 
       <footer className="relative z-10 text-center text-slate-400 text-[10px] sm:text-xs pb-1.5 sm:pb-2 px-4 shrink-0">
-        <p>DCIT 26 – Laboratory 1 · Plain = clean · Scientific = Weekly 5 · Monthly 10 · Yearly 15 · ÷0 summons cats 😹</p>
       </footer>
     </div>
   );
