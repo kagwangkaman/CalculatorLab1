@@ -73,7 +73,10 @@ export default function Calculator() {
   const [correctCount, setCorrectCount] = useState(loadCount);
   const [creditsLeft, setCreditsLeft] = useState(loadLeft);
   const [deg, setDeg] = useState(true);
-  const [showSci, setShowSci] = useState(true);
+  // Plain calculator is always the front on site open.
+  // showSci = false → plain (clean, no modals/memes).
+  // showSci = true  → scientific (original premium + meme logic retained).
+  const [showSci, setShowSci] = useState(false);
 
   useEffect(() => {
     try {
@@ -118,7 +121,18 @@ export default function Calculator() {
     setOperator(null);
     setPrevious(null);
     // Wrong answer → meme pops up where numbers compute (center-screen video popup)
+    // SCIENTIFIC-ONLY: plain mode never calls this.
     setShowMeme(true);
+  }, []);
+
+  // PLAIN-ONLY: same error display, but never pops the meme.
+  // Used when showSci === false so plain stays a plain calculator.
+  const triggerPlainError = useCallback((msg) => {
+    setCurrent(msg);
+    setError(true);
+    setExpression("");
+    setOperator(null);
+    setPrevious(null);
   }, []);
 
   const inputDigit = useCallback(
@@ -153,7 +167,9 @@ export default function Calculator() {
       if (operator && !overwrite) {
         const result = compute(parseFloat(previous), parseFloat(current), operator);
         if (result === null) {
-          triggerWrong("Cannot divide by zero");
+          // Plain → clean error only. Scientific → original meme popup.
+          if (showSci) triggerWrong("Cannot divide by zero");
+          else triggerPlainError("Cannot divide by zero");
           return;
         }
         const r = format(result);
@@ -167,32 +183,38 @@ export default function Calculator() {
       setOperator(op);
       setOverwrite(true);
     },
-    [operator, overwrite, previous, current, error, triggerWrong]
+    [operator, overwrite, previous, current, error, triggerWrong, triggerPlainError, showSci]
   );
 
   const equals = useCallback(() => {
     if (error || !operator || previous === null) return;
     const result = compute(parseFloat(previous), parseFloat(current), operator);
     if (result === null) {
-      triggerWrong("Cannot divide by zero");
+      // Plain → clean error only. Scientific → original meme popup.
+      if (showSci) triggerWrong("Cannot divide by zero");
+      else triggerPlainError("Cannot divide by zero");
     } else {
       const formatted = format(result);
       setExpression(`${previous} ${operator} ${current} =`);
       setCurrent(formatted);
       setLastResult(formatted);
-      // Correct answer → spend 1 subscription credit if any remain.
-      // No credits (or none left) → subscription modal pops up like before.
-      setCorrectCount((c) => c + 1);
-      if (creditsLeft > 0) {
-        setCreditsLeft(creditsLeft - 1);
-      } else {
-        setShowSub(true);
+      // SCIENTIFIC-ONLY subscription logic — untouched original behavior.
+      // Plain mode does nothing here so it stays a plain calculator.
+      if (showSci) {
+        // Correct answer → spend 1 subscription credit if any remain.
+        // No credits (or none left) → subscription modal pops up like before.
+        setCorrectCount((c) => c + 1);
+        if (creditsLeft > 0) {
+          setCreditsLeft(creditsLeft - 1);
+        } else {
+          setShowSub(true);
+        }
       }
     }
     setPrevious(null);
     setOperator(null);
     setOverwrite(true);
-  }, [error, operator, previous, current, triggerWrong, creditsLeft]);
+  }, [error, operator, previous, current, triggerWrong, triggerPlainError, showSci, creditsLeft]);
 
   const backspace = useCallback(() => {
     if (error) return clearAll();
@@ -314,6 +336,15 @@ export default function Calculator() {
   const creditsTotal = subscribedPlan ? subscribedPlan.credits : 0;
   const creditsPct = creditsTotal > 0 ? (creditsLeft / creditsTotal) * 100 : 0;
 
+  // Switching back to plain always closes popups so plain stays clean.
+  const toggleSci = useCallback(() => {
+    if (showSci) {
+      setShowSub(false);
+      setShowMeme(false);
+    }
+    setShowSci((s) => !s);
+  }, [showSci]);
+
   return (
     <>
       <section
@@ -323,7 +354,8 @@ export default function Calculator() {
         {/* inner highlight */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
 
-        {subscribedPlan && creditsLeft > 0 ? (
+        {/* SCIENTIFIC-ONLY subscription banners — hidden in plain mode */}
+        {showSci && subscribedPlan && creditsLeft > 0 ? (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-emerald-300/30 bg-emerald-400/10 px-3 py-1.5 text-xs sm:text-sm text-emerald-100">
             <span className="truncate">
               ⭐ Premium <strong>{subscribedPlan.name}</strong> · {creditsLeft}/{creditsTotal} answers left · ✅ {correctCount} correct
@@ -339,7 +371,8 @@ export default function Calculator() {
           </div>
         ) : null}
 
-        {/* Remaining subscription access before the modal pops again */}
+        {/* Remaining subscription access before the modal pops again — SCIENTIFIC-ONLY */}
+        {showSci ? (
         <div
           className="mb-2 rounded-xl border border-white/15 bg-white/[0.06] px-3 py-1.5"
           role="status"
@@ -366,12 +399,13 @@ export default function Calculator() {
             </p>
           )}
         </div>
+        ) : null}
 
         {/* Scientific toggle */}
         <div className="mb-2 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setShowSci((s) => !s)}
+            onClick={toggleSci}
             aria-expanded={showSci}
             className="rounded-xl border border-white/15 bg-white/[0.06] hover:bg-white/[0.12] px-3 py-1 text-xs sm:text-sm font-bold text-cyan-100 transition active:scale-95 touch-manipulation"
           >
@@ -441,7 +475,8 @@ export default function Calculator() {
         </button>
       </section>
 
-      {showSub && (
+      {/* SCIENTIFIC-ONLY popups — never render in plain mode */}
+      {showSci && showSub && (
         <SubscriptionModal
           result={lastResult}
           onClose={() => setShowSub(false)}
@@ -449,7 +484,7 @@ export default function Calculator() {
         />
       )}
 
-      {showMeme && <MemePopup onClose={() => setShowMeme(false)} />}
+      {showSci && showMeme && <MemePopup onClose={() => setShowMeme(false)} />}
     </>
   );
 }

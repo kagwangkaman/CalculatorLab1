@@ -23,7 +23,7 @@ export default function App() {
           </span>
         </h1>
         <p className="mt-0.5 text-xs sm:text-base text-slate-300/80">
-          Solve it right, unlock premium. Solve it wrong… expect cats.
+          Plain calculator by default — open ƒx Scientific for premium unlocks &amp; cat memes.
         </p>
       </header>
 
@@ -35,7 +35,7 @@ export default function App() {
       </main>
 
       <footer className="relative z-10 text-center text-slate-400 text-[10px] sm:text-xs pb-1.5 sm:pb-2 px-4 shrink-0">
-        <p>DCIT 26 – Laboratory 1 · Weekly 5 · Monthly 10 · Yearly 15 · ÷0 summons cats 😹</p>
+        <p>DCIT 26 – Laboratory 1 · Plain = clean · Scientific = Weekly 5 · Monthly 10 · Yearly 15 · ÷0 summons cats 😹</p>
       </footer>
     </div>
   );
